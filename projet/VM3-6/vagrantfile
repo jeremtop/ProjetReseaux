@@ -11,9 +11,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "debian-tp"
 
   # Ajout d'une interface rÃ©seau (privÃ©e)
+  config.vm.network "private_network", ip:"0.0.0.0", auto_config: false, virtualbox__intnet: "LAN4"
   config.vm.network "private_network", ip:"0.0.0.0", auto_config: false, virtualbox__intnet: "LAN2-6" 
- config.vm.network "private_network", ip:"0.0.0.0", auto_config: false, virtualbox__intnet: "LAN4"
-
+ 
 
 ##### NE PAS MODIFIER CETTE PARTIE
   config.vm.hostname = File.basename(Dir.getwd)
