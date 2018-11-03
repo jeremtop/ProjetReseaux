@@ -12,6 +12,8 @@
 #include <linux/if.h>
 #include <linux/if_tun.h>
 
+#define MAXLIGNE 64
+
 //Serveur
 void echo(int f, char *hote, char *port, int tunnel) {
   int nread;              
@@ -103,14 +105,76 @@ void ext_out(char *port, int tunnel) {
 }
 
 //Client
-// void ext-in(int tunnel) {
-	// int sock;
-	
-	// if ((sock = socket(resol->ai_family, resol->ai_socktype, resol->ai_protocol)) < 0) {
-		// perror("socket");
-		// exit(1);
-	// }
-// }
+void ext_in(char* hote, char* port, int tunnel) {
+	//char * hote; /* nom d'hÃ´te du  serveur */
+    //char * port; /* port TCP du serveur */
+    char ip[NI_MAXHOST]; /* adresse IPv4 en notation pointÃ©e */
+    struct addrinfo *resol; /* struct pour la rÃ©solution de nom */
+    int s; /* descripteur de socket */
+
+    /* RÃ©solution de l'hÃ´te */
+    if ( getaddrinfo(hote,port,NULL, &resol) < 0 ){
+        perror("resolution adresse");
+        exit(2);
+    }
+	/* On extrait l'addresse IPv4 */
+	sprintf(ip,"%s",inet_ntoa(((struct sockaddr_in*)resol->ai_addr)->sin_addr));
+    /* On extrait l'addresse IPv6 */
+    //sprintf(ip, "%s", inet_ntop(resol->ai_family, resol->ai_addr, ip, NI_MAXHOST));
+	printf("ip = %s\n", ip);
+    /* CrÃ©ation de la socket, de type TCP / IP */
+    /* On ne considÃ¨re que la premiÃ¨re adresse renvoyÃ©e par getaddrinfo */
+    if ((s = socket(resol->ai_family,resol->ai_socktype, resol->ai_protocol)) < 0) {
+        perror("allocation de socket");
+        exit(3);
+    }
+    fprintf(stderr,"le n° de la socket est : %i\n",s);
+
+    /* Connexion */
+    fprintf(stderr,"Essai de connexion a  %s (%s) sur le port %s\n\n",
+    hote,ip,port);
+    if (connect(s,resol->ai_addr,sizeof(struct sockaddr_in))<0) {
+        perror("connexion");
+        exit(4);
+    }
+    freeaddrinfo(resol); /* /!\ LibÃ©ration mÃ©moire */
+
+    /* Session */
+    char tampon[MAXLIGNE + 3]; /* tampons pour les communications */
+    ssize_t lu;
+    int fini = 0;
+    while( 1 ) {
+        lu = read(tunnel,tampon,MAXLIGNE);
+		
+		if (lu <= 0) {
+			printf("read = %d\n", lu);
+			break;
+		}
+		
+		printf("%d lu par client : \n", lu);
+		for (int i = 0; i < lu; i++) {
+			printf("%c", tampon[i]);
+		}
+		printf("\n");
+		send(s, tampon, lu, 0);
+        // tampon[lu] = '\0';
+        // printf("reÃ§u: %s de tun0",tampon);
+        // if ( fgets(tampon,MAXLIGNE - 2,stdin) == NULL ){/* entrÃ©e standard fermÃ©e */
+            // fini = 1;
+            // fprintf(stderr,"Connexion terminÃ©e !!\n");
+            // fprintf(stderr,"HÃ´te distant informÃ©...\n");
+            // shutdown(s, SHUT_WR); /* terminaison explicite de la socket
+            // dans le sens client -> serveur */
+            // /* On ne sort pas de la boucle tout de suite ... */
+        // }else{   /* envoi des donnÃ©es */
+            // send(s,tampon,strlen(tampon),0);
+        // }
+		
+        /* Destruction de la socket */
+        close(s);
+        fprintf(stderr,"Fin de la session.\n");
+    }
+}
 
 int tun_alloc(char *dev) {
   struct ifreq ifr;
@@ -153,13 +217,23 @@ int create_tun(char* tunname) {
 int main(int argc, char** argv) {
 	
 	/* Traitement des arguments */
-	if (argc!=3) { /* erreur de syntaxe */
-		printf("Usage: %s nomtunnel port\n",argv[0]);
+	if (argc!=4) { /* erreur de syntaxe */
+		printf("Usage: %s nomtunnel ip port\n",argv[0]);
 		exit(1);
 	}
 	int tunnel = create_tun(argv[1]);
-	
-	ext_out(argv[2],tunnel);
-	
+	char portentree[256];
+	char portsortie[256];
+	char ip[256];
+	sprintf(portentree,argv[3]);
+	//sprintf(portsortie,argv[3]);
+	sprintf(ip,argv[2]);
+	int f = fork();
+	if (f != 0){
+		ext_out(portentree,tunnel);
+	}
+	else {
+		ext_in(ip, portentree, tunnel);
+	}
 	return (0);
 }
