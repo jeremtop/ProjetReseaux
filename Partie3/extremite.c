@@ -13,13 +13,39 @@
 #include <linux/if_tun.h>
 
 //Serveur
+void echo(int f, char *hote, char *port, int tunnel) {
+  int nread;              
+  char buffer[1024]; 
+  int pid = getpid();     
+
+  while (1) { 
+    nread = recv(f, buffer, 1024, 0);
+
+    if (nread <= 0) {
+      printf("nread = %d\n", nread);
+      break;
+    }
+
+    printf("%d lu par serveur :\n", nread);
+    for (int i = 0; i < nread; i++) {
+      printf("%c", buffer[i]);
+    }
+    printf("\n");
+
+    write(tunnel, buffer, nread);
+  }
+
+  close(f);
+  fprintf(stderr, "[%s:%s](%i): Termine.\n", hote, port, pid);
+}
+
 void ext_out(char *port, int tunnel) {
 	printf("serveur\n");
 	int sock;
-	struct addrinfo *res;
+	struct addrinfo *res; /* résolution */
 	
 	struct addrinfo hint = {AI_PASSIVE, /* Toute interface */
-                           PF_INET6,   SOCK_STREAM, 0, /* TCP IPv6 */
+                           PF_INET6,   SOCK_STREAM, 0, /* IP mode connecté */
                            0,          NULL,        NULL, NULL};
 	
 	
@@ -28,7 +54,7 @@ void ext_out(char *port, int tunnel) {
 	int err = getaddrinfo(NULL, port, &hint, &res);
 	if (err < 0) {
 		fprintf(stderr, "Résolution: %s\n", gai_strerror(err));
-		exit (2);
+		exit (1);
 	}
 	
 	
@@ -36,6 +62,14 @@ void ext_out(char *port, int tunnel) {
 		perror("socket");
 		exit(1);
 	}
+	
+	int on = 1;
+	if (setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&on,sizeof(on))<0) {
+		perror("option socket");
+		exit(1);
+	}
+	fprintf(stderr,"Option(s) OK!\n");
+	
 	
 	if(bind(sock, res->ai_addr, sizeof(struct sockaddr_in6)) < 0) {
 		perror("bind");
@@ -58,31 +92,16 @@ void ext_out(char *port, int tunnel) {
 	
 	char hoteclient[NI_MAXHOST];
 	char portclient[NI_MAXSERV];
-	if (getnameinfo((struct sockaddr *)&client, len, hoteclient, NI_MAXHOST, portclient,  NI_MAXSERV, 0) < 0) {
-		perror("getnameinfo");
-		exit(1);
+	err = getnameinfo((struct sockaddr *)&client, len, hoteclient, NI_MAXHOST, portclient,  NI_MAXSERV, 0);
+	if (err < 0) {
+		fprintf(stderr, "resolution client (%i): %s\n", resaccept, gai_strerror(err));
+	} else {
+		fprintf(stderr, "accept! (%i) ip=%s port=%s\n", resaccept, hoteclient, portclient);
 	}
+	echo(resaccept, hoteclient, portclient, tunnel);
 	
-	int nread;
-	char buffer[1024];
-	printf("en attente\n");
-	while (1) {
-		
-		nread = recv(tunnel, buffer, 1024, 0);
-		if(nread <= 0) break;
-		
-		printf("%d lu par serveur =>\n", nread);
-		for (int i = 0; i < nread; i++) {
-			printf("%c", buffer[i]);
-		}
-		printf("\n");
-		
-		write(tunnel, buffer, nread);
-		
-	}
-	printf("termine\n");
-	close(sock);
 }
+
 //Client
 // void ext-in(int tunnel) {
 	// int sock;
@@ -124,7 +143,7 @@ int tun_alloc(char *dev) {
 
 int create_tun(char* tunname) {
 	int tunfd;
-	printf("Création de %s\n",tunname);
+	printf("Creation de %s\n",tunname);
 	tunfd = tun_alloc(tunname);
 	printf("Faire la configuration de %s...\n",tunname);
 	system("./configure-tun.sh");
@@ -132,7 +151,12 @@ int create_tun(char* tunname) {
 }
 
 int main(int argc, char** argv) {
-
+	
+	/* Traitement des arguments */
+	if (argc!=3) { /* erreur de syntaxe */
+		printf("Usage: %s nomtunnel port\n",argv[0]);
+		exit(1);
+	}
 	int tunnel = create_tun(argv[1]);
 	
 	ext_out(argv[2],tunnel);
