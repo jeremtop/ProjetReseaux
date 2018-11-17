@@ -21,38 +21,40 @@ char inopt[256];
 char outip[256];
 char outport[256];
 
-//Serveur Affichage
-void echo(int fd, char *hote, char *port, int tunnel) {
-	int nread;
-	char buffer[1024];
-	int pid = getpid();
-
-	while (1) {
-		nread = recv(fd, buffer, 1024, 0);
-		if (nread <= 0) {
-			printf("nread = %d\n", nread);
-			break;
-		}
-		printf("%d caracteres lus par le serveur :\n", nread);
-		for (int i = 0; i < nread; i++) {
-			printf("%c", buffer[i]);
-		}
-		printf("\n");
-		write(tunnel, buffer, nread);
-	}
-
-	close(fd);
-	fprintf(stderr, "[%s:%s](%i): Termine.\n", hote, port, pid);
-}
 //Serveur
+void echo(int fd, char *hote, char *port, int tunnel) {
+  int nread;
+  char buffer[1024];
+  int pid = getpid();
+
+  while (1) {
+    nread = recv(fd, buffer, 1024, 0);
+    if (nread <= 0) {
+      printf("nread = %d\n", nread);
+      break;
+    }
+    printf("%d lu par serveur :\n", nread);
+    for (int i = 0; i < nread; i++) {
+      printf("%c", buffer[i]);
+    }
+    printf("\n");
+	//printf("on envoie %s (%d)au tunnel %d \n",buffer,nread,tunnel);
+    write(tunnel, buffer, nread);
+	
+  }
+
+  close(fd);
+  fprintf(stderr, "[%s:%s](%i): Termine.\n", hote, port, pid);
+}
+
 void ext_out(char *port, int tunnel) {
 	printf("---SERVEUR---\n");
 	int s; /* descripteur de socket */
 	struct addrinfo *resol; /* résolution */
 
-	struct addrinfo indic = { AI_PASSIVE, /* Toute interface */
-						   PF_INET6,   SOCK_STREAM, 0, /* IP mode connecté */
-						   0,          NULL,        NULL, NULL };
+	struct addrinfo indic = {AI_PASSIVE, /* Toute interface */
+                           PF_INET6,   SOCK_STREAM, 0, /* IP mode connecté */
+                           0,          NULL,        NULL, NULL};
 	struct sockaddr_in6 client; /* adresse de socket du client */
 	client.sin6_addr = in6addr_any;
 
@@ -60,46 +62,46 @@ void ext_out(char *port, int tunnel) {
 	int err = getaddrinfo(NULL, port, &indic, &resol);
 	if (err < 0) {
 		fprintf(stderr, "Résolution: %s\n", gai_strerror(err));
-		exit(2);
+		exit (2);
 	}
 	// if ((sock = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP)) < 0) {
 		// perror("socket");
 		// exit(1);
 	// }
 	/* Creation de la socket, de type TCP / IP */
-	if ((s = socket(resol->ai_family, resol->ai_socktype, resol->ai_protocol)) < 0) {
-		perror("allocation de socket");
-		exit(3);
+	if ((s = socket(resol->ai_family, resol->ai_socktype, resol->ai_protocol))<0) {
+    perror("allocation de socket");
+    exit(3);
 	}
 	fprintf(stderr, "le n° de la socket est : %i\n", s);
 
 	/* On rend le port reutilisable rapidement /!\ */
 	int on = 1;
-	if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+	if (setsockopt(s,SOL_SOCKET,SO_REUSEADDR,&on,sizeof(on))<0) {
 		perror("option socket");
 		exit(4);
 	}
 	fprintf(stderr, "Option(s) OK!\n");
 
-	/* Association de la socket s a l'adresse obtenue par resolution */
-	if (bind(s, resol->ai_addr, sizeof(struct sockaddr_in6)) < 0) {
+	 /* Association de la socket s a l'adresse obtenue par resolution */
+	if(bind(s, resol->ai_addr, sizeof(struct sockaddr_in6)) < 0) {
 		perror("bind");
 		exit(5);
 	}
 	freeaddrinfo(resol); /* /!\ Liberation mémoire */
-	fprintf(stderr, "bind!\n");
+	fprintf(stderr,"bind!\n");
 
-	/* la socket est prete a recevoir */
+	 /* la socket est prete a recevoir */
 	if (listen(s, SOMAXCONN) < 0) {
 		perror("listen");
 		exit(6);
 	}
 	fprintf(stderr, "listen!\n");
-
+	
 	int len = sizeof(struct sockaddr_in6);
-
+	
 	int resolaccept;
-	if ((resolaccept = accept(s, (struct sockaddr *)&client, (socklen_t *)&len)) < 0) {
+	if ((resolaccept=accept(s, (struct sockaddr *)&client, (socklen_t *)&len)) < 0) {
 		perror("accept");
 		exit(7);
 	}
@@ -107,17 +109,17 @@ void ext_out(char *port, int tunnel) {
 	/* Nom reseau du client */
 	char hoteclient[NI_MAXHOST];
 	char portclient[NI_MAXSERV];
-	err = getnameinfo((struct sockaddr *)&client, len, hoteclient, NI_MAXHOST, portclient, NI_MAXSERV, 0);
+	err = getnameinfo((struct sockaddr *)&client, len, hoteclient, NI_MAXHOST, portclient,  NI_MAXSERV, 0);
 	if (err < 0) {
 		fprintf(stderr, "resolution client (%i): %s\n", resolaccept, gai_strerror(err));
-	}
-	else {
+	} else {
 		fprintf(stderr, "accept! (%i) ip=%s port=%s\n", resolaccept, hoteclient, portclient);
 	}
 	/* traitement */
 	echo(resolaccept, hoteclient, portclient, tunnel);
-
+	 
 }
+
 //Client
 void ext_in(char* hote, char* port, int tunnel) {
 	printf("---CLIENT---\n");
@@ -127,21 +129,21 @@ void ext_in(char* hote, char* port, int tunnel) {
 
 	if (port == NULL || hote == NULL) {
 		printf("Usage: client hote port\n");
-		exit(1);
+		exit (1);
 	}
 
 	/* Resolution de l'hote */
 
 	if (getaddrinfo(hote, port, NULL, &resol) < 0) {
 		perror("resolution adresse");
-		exit(2);
+		exit (2);
 	}
 
 	/* On extrait l'addresse IP */
 	// sprintf(ip, "%s",
-		 // inet_ntoa(((struct sockaddr_in *)resol->ai_addr)->sin_addr));
+         // inet_ntoa(((struct sockaddr_in *)resol->ai_addr)->sin_addr));
 	sprintf(ip, "%s",
-		inet_ntop(resol->ai_family, resol->ai_addr, ip, NI_MAXHOST));
+          inet_ntop(resol->ai_family, resol->ai_addr, ip, NI_MAXHOST));
 
 	printf("ip du client = %s\n", ip);
 
@@ -149,15 +151,15 @@ void ext_in(char* hote, char* port, int tunnel) {
 	/* On ne considere que la premiere adresse renvoyee par getaddrinfo */
 	if ((s = socket(resol->ai_family, resol->ai_socktype, resol->ai_protocol)) < 0) {
 		perror("allocation de socket");
-		exit(3);
+		exit (3);
 	}
 	fprintf(stderr, "le n° de la socket est : %i\n", s);
 	/* Connexion */
 	fprintf(stderr, "Essai de connexion a  hote %s (%s) sur le port %s\n\n", hote,
-		ip, port);
+          ip, port);
 	if (connect(s, resol->ai_addr, sizeof(struct sockaddr_in6)) < 0) {
 		perror("connexion");
-		exit(4);
+		exit (4);
 	}
 	freeaddrinfo(resol); /* /!\ Liberation memoire */
 
@@ -167,72 +169,75 @@ void ext_in(char* hote, char* port, int tunnel) {
 	int nread;
 
 	while (1) {
-		nread = read(tunnel, buffer, 1024);
-		if (nread <= 0) {
-			printf("nread = %d\n", nread);
-			break;
-		}
+		
+    	nread = read(tunnel, buffer, 1024);
 
-		printf("%d caracteres lus par le  client : \n", nread);
-		for (int i = 0; i < nread; i++) {
-			printf("%c", buffer[i]);
-		}
-		printf("\n");
+    	if (nread <= 0) {
+    	  printf("nread = %d\n", nread);
+    	  break;
+    	}
 
-		send(s, buffer, nread, 0);
+    	printf("%d lu par client : \n", nread);
+    	for (int i = 0; i < nread; i++) {
+    	  printf("%c", buffer[i]);
+    	}
+    	printf("\n");
+		
+    	send(s, buffer, nread, 0);
+		
 	}
 
 	close(s);
 	fprintf(stderr, "Fin de la session.\n");
 }
-//Tunnel Allocation
+
 int tun_alloc(char *dev) {
-	struct ifreq ifr;
-	int fd, err;
+  struct ifreq ifr;
+  int fd, err;
 
-	if ((fd = open("/dev/net/tun", O_RDWR)) < 0) {
-		perror("alloc tun");
-		exit(-1);
-	}
+  if ((fd = open("/dev/net/tun", O_RDWR)) < 0) {
+    perror("alloc tun");
+    exit(-1);
+  }
 
-	memset(&ifr, 0, sizeof(ifr));
+  memset(&ifr, 0, sizeof(ifr));
 
-	/* Flags: IFF_TUN   - TUN device (no Ethernet headers)
-	 *        IFF_TAP   - TAP device
-	 *
-	 *        IFF_NO_PI - Do not provide packet information
-	 */
-	ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
-	if (*dev)
-		strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+  /* Flags: IFF_TUN   - TUN device (no Ethernet headers)
+   *        IFF_TAP   - TAP device
+   *
+   *        IFF_NO_PI - Do not provide packet information
+   */
+  ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+  if (*dev)
+    strncpy(ifr.ifr_name, dev, IFNAMSIZ);
 
-	if ((err = ioctl(fd, TUNSETIFF, (void *)&ifr)) < 0) {
-		close(fd);
-		return err;
-	}
-	strcpy(dev, ifr.ifr_name);
+  if ((err = ioctl(fd, TUNSETIFF, (void *)&ifr)) < 0) {
+    close(fd);
+    return err;
+  }
+  strcpy(dev, ifr.ifr_name);
 
-	return fd;
+  return fd;
 }
-//Tunnel Creation et Configuration
+
 int create_tun(char* tunname) {
 	int tunfd;
 	char system_buffer[256];
-	printf("Creation de %s\n", tunname);
+	printf("Creation de %s\n",tunname);
 	tunfd = tun_alloc(tunname);
-	printf("Faire la configuration de %s...\n", tunname);
+	printf("Faire la configuration de %s...\n",tunname);
 	printf("./configure-tun.sh %s\n", inip);
 	sprintf(system_buffer, "./configure-tun.sh %s", inip);
 	system(system_buffer);
-
-	if (strcmp(outip, "fc00:1234:2::36") == 0) {
-		printf("Ajout de la route vers VM3 depuis VM1-6 \n");
+	
+	if(strcmp(outip,"fc00:1234:2::36")==0) {
+		printf("Ajout route vers VM3 depuis VM1-6 \n");
 		//sprintf(system_buffer, "./configure-route16.sh");
 		sprintf(system_buffer, "sudo ip route add 172.16.2.176/28 via 172.16.2.10 dev tun0");
 		system(system_buffer);
 	}
-	else if (strcmp(outip, "fc00:1234:1::16") == 0) {
-		printf("Ajout de la route vers VM1 depuis VM3-6 \n");
+	else if(strcmp(outip,"fc00:1234:2::16")==0){
+		printf("Ajout route vers VM1 depuis VM3-6 \n");
 		//sprintf(system_buffer, "./configure-route36.sh");
 		sprintf(system_buffer, "sudo ip route add 172.16.2.144/28 via 172.16.2.10 dev tun0");
 		system(system_buffer);
@@ -240,42 +245,41 @@ int create_tun(char* tunname) {
 	else printf("Pas de route configurée\n");
 	return tunfd;
 }
-//Lecteur du fichier config
-void read_config(char *filename) {
-	FILE *config_file = fopen(filename, "r");
-	if (config_file == NULL) {
-		perror("Cannot open file");
-		exit(0);
-	}
-	fscanf(config_file, "tun=%s\n", tun);
-	fscanf(config_file, "inip=%s\n", inip);
-	fscanf(config_file, "inport=%s\n", inport);
-	//fscanf(config_file, "options=%s\n", inopt);
-	fscanf(config_file, "outip=%s\n", outip);
-	fscanf(config_file, "outport=%s\n", outport);
-	printf("---CONFIGURATION---\ntun=%s\ninip=%s\ninport=%s\noptions=%s\noutip=%s\noutport=%s\n",
-		tun, inip, inport, inopt, outip, outport);
+
+void read_config_file(char *filname) {
+  FILE *config_file = fopen(filname, "r");
+  if (config_file == NULL) {
+    perror("Cannot open file");
+    exit(0);
+  }
+  fscanf(config_file, "tun=%s\n", tun);
+  fscanf(config_file, "inip=%s\n", inip);
+  fscanf(config_file, "inport=%s\n", inport);
+  //fscanf(config_file, "options=%s\n", inopt);
+  fscanf(config_file, "outip=%s\n", outip);
+  fscanf(config_file, "outport=%s\n", outport);
+  printf("---CONFIGURATION---\ntun=%s\ninip=%s\ninport=%s\noptions=%s\noutip=%s\noutport=%s\n",
+  tun, inip, inport, inopt, outip, outport);
 }
 
 int main(int argc, char** argv) {
 
 	/* Traitement des arguments */
-	if (argc != 2) { /* erreur de syntaxe */
-		printf("Usage: %s filename\n", argv[0]);
+	if (argc!=2) { /* erreur de syntaxe */
+		printf("Usage: %s filename\n",argv[0]);
 		exit(1);
 	}
 
-	read_config(argv[1]);
+	read_config_file(argv[1]);
+
 	int tunnel = create_tun(tun);
 
 	int f = fork();
-	if (f != 0) {
-		//partie serveur
-		ext_out(inport, tunnel);
+	if (f != 0){
+		ext_out(inport,tunnel);
 		kill(f, SIGKILL);
 	}
 	else {
-		//partie client
 		printf("Client : %s (port : %s)\nAppuyez sur une touche pour continuer\n", outip, outport);
 		getchar();
 		ext_in(outip, outport, tunnel);

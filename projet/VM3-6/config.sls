@@ -41,3 +41,8 @@ routes:
       - name: LAN1-6
         ipv6ipaddr: fc00:1234:1::/64
         gateway: fc00:1234:2::26
+
+net.ipv4.ip_forward:
+  sysctl:
+    - present
+    - value: 1

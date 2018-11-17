@@ -29,11 +29,11 @@ eth2:
     - ipaddr: 172.16.2.151
     - netmask: 28
 
-## Configuration de la route vers LAN2 via VM2
+## Configuration de la route vers LAN2 via VM1-6
 routes:
   network.routes:
     - name: eth2
     - routes:
       - name: LAN2
-        ipaddr: 172.16.2.160/28
-        gateway: 172.16.2.132
+        ipaddr: 172.16.2.176/28
+        gateway: 172.16.2.156
