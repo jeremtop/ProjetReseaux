@@ -1,6 +1,0 @@
-tun=tun0
-inip=172.16.2.1/28
-inport=123
-options=0
-outip=172.16.2.183
-outport=123
