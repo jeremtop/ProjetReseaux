@@ -8,4 +8,4 @@ sudo ./extremite config16.txt sur VM1-6
 
 sudo ./extremite config36.txt sur VM3-6
 
-A partir de maintenant le tunnel est en place et les routes sont configurés (par le programme sur VM1-6 et 3-6, par le salt pour les autres) et on peut ping VM3 depuis VM1 et inversement.
+A partir de maintenant le tunnel est en place et les routes sont configurées (par le programme sur VM1-6,3-6 et par le salt pour les autres) et on peut ping VM3 depuis VM1 et inversement.
