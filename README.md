@@ -9,3 +9,5 @@ sudo ./extremite config16.txt sur VM1-6
 sudo ./extremite config36.txt sur VM3-6
 
 A partir de maintenant le tunnel est en place et les routes sont configurées (par le programme sur VM1-6,3-6 et par le salt pour les autres) et on peut ping VM3 depuis VM1 et inversement.
+
+Avec le salt automatique le tunnel se crée automatiquement sur VM1-6,3-6 apres l'execution de la commande sudo salt-call state.apply 
